@@ -30,7 +30,7 @@ var utils = require('web3-utils');
 var promiEvent = require('web3-core-promievent');
 var Subscriptions = require('web3-core-subscriptions').subscriptions;
 
-var TIMEOUTBLOCK = 50;
+var TIMEOUTBLOCK = 3003;
 var CONFIRMATIONBLOCKS = 24;
 
 var Method = function Method(options) {
