@@ -324,7 +324,8 @@ Method.prototype._confirmTransaction = function (defer, result, payload) {
                             }
 
                         } else {
-                            utils._fireError(new Error('The contract code couldn\'t be stored, please check your gas limit.'), defer.eventEmitter, defer.reject);
+                            return;
+                            //utils._fireError(new Error('The contract code couldn\'t be stored, please check your gas limit.'), defer.eventEmitter, defer.reject);
                         }
 
                         if (canUnsubscribe) {
