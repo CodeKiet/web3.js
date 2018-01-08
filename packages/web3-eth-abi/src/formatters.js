@@ -52,7 +52,7 @@ var formatInputInt = function (value) {
  * @returns {SolidityParam}
  */
 var formatInputBytes = function (value) {
-    if(!utils.isHex(value)) {
+    if(!utils.isHexStrict(value)) {
         throw new Error('Given parameter is not bytes: "'+ value + '"');
     }
 
@@ -60,6 +60,10 @@ var formatInputBytes = function (value) {
 
     if(result.length % 2 !== 0) {
         throw new Error('Given parameter bytes has an invalid length: "'+ value + '"');
+    }
+
+    if (result.length > 64) {
+        throw new Error('Given parameter bytes is too long: "' + value + '"');
     }
 
     var l = Math.floor((result.length + 63) / 64);
@@ -75,7 +79,7 @@ var formatInputBytes = function (value) {
  * @returns {SolidityParam}
  */
 var formatInputDynamicBytes = function (value) {
-    if(!utils.isHex(value)) {
+    if(!utils.isHexStrict(value)) {
         throw new Error('Given parameter is not bytes: "'+ value + '"');
     }
 
@@ -138,7 +142,11 @@ var signedIsNegative = function (value) {
  * @returns {BN} right-aligned output bytes formatted to big number
  */
 var formatOutputInt = function (param) {
-    var value = param.staticPart() || "0";
+    var value = param.staticPart();
+
+    if(!value && !param.rawValue) {
+        throw new Error('Couldn\'t decode '+ name +' from ABI: 0x'+ param.rawValue);
+    }
 
     // check if it's negative number
     // it it is, return two's complement
@@ -158,7 +166,7 @@ var formatOutputInt = function (param) {
 var formatOutputUInt = function (param, name) {
     var value = param.staticPart();
 
-    if(!value) {
+    if(!value && !param.rawValue) {
         throw new Error('Couldn\'t decode '+ name +' from ABI: 0x'+ param.rawValue);
     }
 
@@ -172,12 +180,13 @@ var formatOutputUInt = function (param, name) {
  *
  * @method formatOutputBool
  * @param {SolidityParam} param
+ * @param {String} name type name
  * @returns {Boolean} right-aligned input bytes formatted to bool
  */
 var formatOutputBool = function (param, name) {
     var value = param.staticPart();
 
-    if(!value) {
+    if(!value && !param.rawValue) {
         throw new Error('Couldn\'t decode '+ name +' from ABI: 0x'+ param.rawValue);
     }
 
@@ -208,10 +217,17 @@ var formatOutputBytes = function (param, name) {
  *
  * @method formatOutputDynamicBytes
  * @param {SolidityParam} param left-aligned hex representation of string
+ * @param {String} name type name
  * @returns {String} hex string
  */
-var formatOutputDynamicBytes = function (param) {
-    var length = (new BN(param.dynamicPart().slice(0, 64), 16)).toNumber() * 2;
+var formatOutputDynamicBytes = function (param, name) {
+    var hex = param.dynamicPart().slice(0, 64);
+
+    if (!hex) {
+        throw new Error('Couldn\'t decode '+ name +' from ABI: 0x'+ param.rawValue);
+    }
+
+    var length = (new BN(hex, 16)).toNumber() * 2;
     return '0x' + param.dynamicPart().substr(64, length);
 };
 
@@ -224,23 +240,30 @@ var formatOutputDynamicBytes = function (param) {
  */
 var formatOutputString = function (param) {
     var hex = param.dynamicPart().slice(0, 64);
-    if(hex) {
-        var length = (new BN(hex, 16)).toNumber() * 2;
-        return length ? utils.hexToUtf8('0x'+ param.dynamicPart().substr(64, length).replace(/^0x/i, '')) : '';
-    } else {
+
+    if(!hex) {
         throw new Error('ERROR: The returned value is not a convertible string:'+ hex);
     }
+
+    var length = (new BN(hex, 16)).toNumber() * 2;
+    return length ? utils.hexToUtf8('0x'+ param.dynamicPart().substr(64, length).replace(/^0x/i, '')) : '';
 };
 
 /**
  * Should be used to format output address
  *
  * @method formatOutputAddress
- * @param {Object} param right-aligned input bytes
+ * @param {SolidityParam} param right-aligned input bytes
+ * @param {String} name type name
  * @returns {String} address
  */
-var formatOutputAddress = function (param) {
+var formatOutputAddress = function (param, name) {
     var value = param.staticPart();
+
+    if (!value) {
+        throw new Error('Couldn\'t decode '+ name +' from ABI: 0x'+ param.rawValue);
+    }
+
     return utils.toChecksumAddress("0x" + value.slice(value.length - 40, value.length));
 };
 
